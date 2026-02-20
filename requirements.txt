@@ -1,0 +1,19 @@
+# ── Core framework ──────────────────────────────────────────────────
+fastapi>=0.100.0,<1.0.0
+uvicorn[standard]>=0.23.0,<1.0.0
+pydantic>=2.0.0,<3.0.0
+
+# ── ML / Fairseq ────────────────────────────────────────────────────
+# PyTorch: install separately – see Dockerfile
+# torch==2.5.1
+fairseq==0.12.2
+sentencepiece>=0.1.99
+
+# ── Observability ───────────────────────────────────────────────────
+prometheus-client>=0.17.0
+python-json-logger>=2.0.0
+
+# ── Testing ─────────────────────────────────────────────────────────
+httpx>=0.25.0
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
