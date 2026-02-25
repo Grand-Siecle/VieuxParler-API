@@ -76,7 +76,14 @@ Prérequis : [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud
 docker compose --profile gpu up --build api-gpu
 ```
 
-> Les services `api` (CPU) et `api-gpu` (GPU) utilisent le même port 8000. Ne lancez qu'un seul des deux à la fois.
+Pour arrêter la version CPU avant de lancer la version GPU (ou inversement) :
+
+```bash
+docker compose down              # arrête le service CPU
+docker compose --profile gpu up --build api-gpu
+```
+
+> **Attention :** les deux services utilisent le port 8000. Ne lancez jamais les deux en même temps.
 
 Le dossier `freem_lstm_fairseq/` est monté en lecture seule dans le conteneur.
 
