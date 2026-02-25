@@ -62,9 +62,21 @@ L'API démarre sur `http://localhost:8000`. Le modèle se charge au démarrage (
 
 ### Avec Docker Compose
 
+#### Version CPU (par défaut)
+
 ```bash
 docker compose up --build
 ```
+
+#### Version GPU (NVIDIA CUDA)
+
+Prérequis : [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) installé sur l'hôte.
+
+```bash
+docker compose --profile gpu up --build api-gpu
+```
+
+> Les services `api` (CPU) et `api-gpu` (GPU) utilisent le même port 8000. Ne lancez qu'un seul des deux à la fois.
 
 Le dossier `freem_lstm_fairseq/` est monté en lecture seule dans le conteneur.
 

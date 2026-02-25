@@ -1,6 +1,7 @@
 version: "3.8"
 
 services:
+  # ── CPU (default) ──────────────────────────────────────────
   api:
     build:
       context: .
@@ -16,7 +17,7 @@ services:
       - CHECKPOINT_FILE=model/checkpoint_best.pt
       - DATA_DIR=data_norm_bin_4000
       - BPE_MODEL=bpe_joint_4000.model
-      - DEVICE=auto          # auto | cpu | cuda
+      - DEVICE=cpu
       - BEAM_SIZE=5
       - MAX_TOKENS=200
       - WORKERS=1
@@ -34,3 +35,41 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 3
+
+  # ── GPU (NVIDIA CUDA) ─────────────────────────────────────
+  api-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
+    container_name: vieuxparler-api-gpu
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./freem_lstm_fairseq:/app/freem_lstm_fairseq:ro
+      - ./logs:/logs
+    environment:
+      - MODEL_DIR=/app/freem_lstm_fairseq
+      - CHECKPOINT_FILE=model/checkpoint_best.pt
+      - DATA_DIR=data_norm_bin_4000
+      - BPE_MODEL=bpe_joint_4000.model
+      - DEVICE=cuda
+      - BEAM_SIZE=5
+      - MAX_TOKENS=200
+      - WORKERS=1
+      - LOG_LEVEL=info
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    profiles:
+      - gpu
