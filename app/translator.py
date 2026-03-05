@@ -49,7 +49,7 @@ class FairseqTranslator:
         self._model = LSTMModel.from_pretrained(
             model_name_or_path=model_dir,
             checkpoint_file=config.CHECKPOINT_FILE,
-            data_name_or_path=config.DATA_DIR,
+            data_name_or_path=str(config.MODEL_DIR / config.DATA_DIR),
             bpe="sentencepiece",
             sentencepiece_model=str(config.MODEL_DIR / config.BPE_MODEL),
             source_lang=config.SOURCE_LANG,
@@ -104,7 +104,7 @@ class FairseqTranslator:
         }
         if cuda_available:
             info["gpu_name"] = torch.cuda.get_device_name(0)
-            info["gpu_memory_mb"] = round(torch.cuda.get_device_properties(0).total_mem / 1024 / 1024)
+            info["gpu_memory_mb"] = round(torch.cuda.get_device_properties(0).total_memory / 1024 / 1024)
         return info
 
     def _translate_raw(self, text: str) -> str:
