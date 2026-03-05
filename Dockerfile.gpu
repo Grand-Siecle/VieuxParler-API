@@ -1,13 +1,14 @@
 # ============================================================
-# Stage 1 – Install dependencies (GPU / CUDA 12.1)
+# Python 3.9 source (avoids slow deadsnakes PPA)
 # ============================================================
-FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04 AS builder
+FROM python:3.9-slim-bullseye AS python-base
+
+# ============================================================
+# Stage 1 – Install dependencies (builder)
+# ============================================================
+FROM python:3.9-slim-bullseye AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3.9 \
-        python3.9-dev \
-        python3.9-venv \
-        python3-pip \
         build-essential \
         gcc \
         g++ \
@@ -16,29 +17,57 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /build
 
-# Create a venv pinned to Python 3.9 to get predictable package paths
+# Create a venv pinned to Python 3.9
 RUN python3.9 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install PyTorch with CUDA 12.1 support
-RUN pip install --no-cache-dir \
-    torch==2.5.1 \
-    --index-url https://download.pytorch.org/whl/cu121
+# 1. Pin pip and install build tools first
+RUN pip install "pip<24.1" \
+    && pip install --no-cache-dir setuptools wheel build Cython
 
+# 2. Install fairseq and ML dependencies
+RUN pip install --no-cache-dir \
+    fairseq==0.12.2 \
+    iopath \
+    sentencepiece \
+    sacrebleu \
+    omegaconf==2.0.5 \
+    gdown==4.2.0 \
+    tensorboardX \
+    numpy==1.25.2 \
+    pandas \
+    matplotlib
+
+# 3. Install PyTorch with CUDA 12.4 support (replaces any torch pulled by fairseq)
+RUN pip uninstall -y torch torchaudio 2>/dev/null; \
+    pip install --no-cache-dir \
+    torch==2.5.1 torchaudio \
+    --index-url https://download.pytorch.org/whl/cu124
+
+# 4. Install app dependencies (fastapi, uvicorn, etc.)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # ============================================================
 # Stage 2 – Runtime image (GPU)
 # ============================================================
-FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
 
+# Copy Python 3.9 + its shared libs from official Bullseye image
+COPY --from=python-base /usr/local /usr/local
+COPY --from=python-base /usr/lib/x86_64-linux-gnu/libssl.so.1.1 /usr/lib/x86_64-linux-gnu/
+COPY --from=python-base /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1 /usr/lib/x86_64-linux-gnu/
+COPY --from=python-base /usr/lib/x86_64-linux-gnu/libffi.so.7 /usr/lib/x86_64-linux-gnu/
+
+# Install minimal runtime deps for Python and the app
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3.9 \
-        python3.9-venv \
+        libexpat1 \
+        libsqlite3-0 \
         curl \
+        unzip \
         libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && ldconfig
 
 # Copy the whole venv from builder
 COPY --from=builder /opt/venv /opt/venv
@@ -49,6 +78,13 @@ WORKDIR /app
 # Copy application code
 COPY main.py ./
 COPY app/ ./app/
+
+# Download model
+RUN curl -fL -o freem_lstm_fairseq.zip \
+        "https://github.com/Grand-Siecle/test_modernisation/releases/download/fairseq-v0.1/freem_lstm_fairseq.zip" \
+    && unzip -o freem_lstm_fairseq.zip \
+    && rm freem_lstm_fairseq.zip \
+    && ls -la freem_lstm_fairseq/model/checkpoint_best.pt
 
 # Logs volume
 RUN mkdir -p /logs

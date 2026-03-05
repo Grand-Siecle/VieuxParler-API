@@ -12,11 +12,30 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /build
 
-# Install PyTorch CPU first (keeps image small; swap index for CUDA if needed)
+# 1. Pin pip and install build tools first
+RUN pip install "pip<24.1" \
+    && pip install --no-cache-dir setuptools wheel build Cython
+
+# 2. Install fairseq and ML dependencies
 RUN pip install --no-cache-dir \
-    torch==2.5.1 \
+    fairseq==0.12.2 \
+    iopath \
+    sentencepiece \
+    sacrebleu \
+    omegaconf==2.0.5 \
+    gdown==4.2.0 \
+    tensorboardX \
+    numpy==1.25.2 \
+    pandas \
+    matplotlib
+
+# 3. Install PyTorch CPU (replaces any torch pulled by fairseq)
+RUN pip uninstall -y torch torchaudio 2>/dev/null; \
+    pip install --no-cache-dir \
+    torch==2.5.1 torchaudio \
     --index-url https://download.pytorch.org/whl/cpu
 
+# 4. Install app dependencies (fastapi, uvicorn, etc.)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -27,6 +46,7 @@ FROM python:3.9-slim-bullseye
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
+        unzip \
         libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -39,6 +59,13 @@ WORKDIR /app
 # Copy application code
 COPY main.py ./
 COPY app/ ./app/
+
+# Download model
+RUN curl -fL -o freem_lstm_fairseq.zip \
+        "https://github.com/Grand-Siecle/test_modernisation/releases/download/fairseq-v0.1/freem_lstm_fairseq.zip" \
+    && unzip -o freem_lstm_fairseq.zip \
+    && rm freem_lstm_fairseq.zip \
+    && ls -la freem_lstm_fairseq/model/checkpoint_best.pt
 
 # Logs volume
 RUN mkdir -p /logs
