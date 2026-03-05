@@ -1,3 +1,8 @@
 CLAUDE.md
 freem_lstm_fairseq/
 .claude/
+.venv/
+__pycache__/
+data_norm_bin_4000/
+model/
+bpe_joint_4000.model
