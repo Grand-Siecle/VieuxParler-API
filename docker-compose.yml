@@ -7,8 +7,6 @@ services:
     container_name: vieuxparler-api
     ports:
       - "8010:8000"
-    volumes:
-      - ./logs:/logs
     environment:
       - MODEL_DIR=/app/freem_lstm_fairseq
       - CHECKPOINT_FILE=model/checkpoint_best.pt
@@ -41,8 +39,6 @@ services:
     container_name: vieuxparler-api-gpu
     ports:
       - "8011:8000"
-    volumes:
-      - ./logs:/logs
     environment:
       - MODEL_DIR=/app/freem_lstm_fairseq
       - CHECKPOINT_FILE=model/checkpoint_best.pt
