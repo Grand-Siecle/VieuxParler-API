@@ -1,12 +1,7 @@
 # ============================================================
-# Python 3.9 source (avoids slow deadsnakes PPA)
-# ============================================================
-FROM python:3.9-slim-bullseye AS python-base
-
-# ============================================================
 # Stage 1 – Install dependencies (builder)
 # ============================================================
-FROM python:3.9-slim-bullseye AS builder
+FROM python:3.9-slim-bookworm AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
@@ -51,23 +46,18 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ============================================================
 # Stage 2 – Runtime image (GPU)
 # ============================================================
-FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
+# Same base as the builder: the venv's python symlinks and compiled
+# extensions match exactly. No CUDA base image needed — the torch cu124
+# wheels ship the CUDA runtime libs (nvidia-* packages in the venv), and
+# the NVIDIA Container Toolkit injects the host driver (libcuda) at run time.
+FROM python:3.9-slim-bookworm
 
-# Copy Python 3.9 + its shared libs from official Bullseye image
-COPY --from=python-base /usr/local /usr/local
-COPY --from=python-base /usr/lib/x86_64-linux-gnu/libssl.so.1.1 /usr/lib/x86_64-linux-gnu/
-COPY --from=python-base /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1 /usr/lib/x86_64-linux-gnu/
-COPY --from=python-base /usr/lib/x86_64-linux-gnu/libffi.so.7 /usr/lib/x86_64-linux-gnu/
-
-# Install minimal runtime deps for Python and the app
+# Install minimal runtime deps for the app
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libexpat1 \
-        libsqlite3-0 \
         curl \
         unzip \
         libgomp1 \
-    && rm -rf /var/lib/apt/lists/* \
-    && ldconfig
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy the whole venv from builder
 COPY --from=builder /opt/venv /opt/venv
