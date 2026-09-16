@@ -1,7 +1,7 @@
 # ============================================================
 # Stage 1 – Install dependencies
 # ============================================================
-FROM python:3.9-slim-bullseye AS builder
+FROM python:3.9-slim-bookworm AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
@@ -42,7 +42,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ============================================================
 # Stage 2 – Runtime image
 # ============================================================
-FROM python:3.9-slim-bullseye
+FROM python:3.9-slim-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
