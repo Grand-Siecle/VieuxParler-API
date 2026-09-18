@@ -235,8 +235,15 @@ def main():
     identical = sum(1 for a, b in zip(ref_out, bat_out) if a == b)
     diffs = [i for i, (a, b) in enumerate(zip(ref_out, bat_out)) if a != b]
 
+    threshold = engine.settings.split_over_tokens
+    split_idx = {i for i, n in enumerate(lengths) if threshold > 0 and n > threshold}
+    unsplit = [i for i in range(len(sources)) if i not in split_idx]
+    same_unsplit = sum(1 for i in unsplit if ref_out[i] == bat_out[i])
     print("\n== Parity (reference vs batched) ==")
     print(f"identical: {identical}/{len(sources)}  different: {len(diffs)}")
+    print(f"  lines <= {threshold} tokens (not split): {same_unsplit}/{len(unsplit)} identical")
+    print(f"  lines >  {threshold} tokens (split, expected to differ from the truncated reference): "
+          f"{len(split_idx)}, of which {sum(1 for i in split_idx if ref_out[i] != bat_out[i])} differ")
     diff_records = []
     for i in diffs[: args.show]:
         rec = {"class": classes[i], "tokens": lengths[i], "source": sources[i],
@@ -296,6 +303,9 @@ def main():
             "tokens": total_tokens,
             "identical": identical,
             "different": len(diffs),
+            "identical_unsplit": same_unsplit,
+            "unsplit": len(unsplit),
+            "split": len(split_idx),
             "differences": diff_records,
             "reference_seconds": ref_time,
             "batched_seconds": bat_time,
