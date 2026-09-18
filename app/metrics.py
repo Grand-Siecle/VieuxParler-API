@@ -40,3 +40,25 @@ MODEL_LOAD_TIME = Gauge(
     "model_load_time_seconds",
     "Time to load the model at startup",
 )
+
+# ── Batching ────────────────────────────────────────────────────────
+TOKEN_BUDGET = Gauge(
+    "token_budget",
+    "Effective fairseq max_tokens budget used by the last model call",
+)
+OOM_FALLBACKS = Counter(
+    "oom_fallbacks_total",
+    "Model calls retried with a halved token budget after a CUDA out-of-memory",
+)
+LINES_SPLIT = Counter(
+    "lines_split_total",
+    "Input lines longer than SPLIT_OVER_TOKENS that were split into segments",
+)
+REQUESTS_COALESCED = Counter(
+    "requests_coalesced_total",
+    "Requests that were merged with others into a single model call",
+)
+COALESCED_BATCH_REQUESTS = Gauge(
+    "coalesced_batch_requests",
+    "Number of requests merged in the last coalesced model call",
+)

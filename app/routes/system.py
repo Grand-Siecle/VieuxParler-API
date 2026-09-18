@@ -16,6 +16,7 @@ async def health():
         model_loaded=translator.is_loaded,
         version=config.MODEL_VERSION,
         device=translator.device_info,
+        inference=translator.inference_info,
     )
 
 
