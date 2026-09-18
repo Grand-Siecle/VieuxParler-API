@@ -22,7 +22,6 @@ Run inside the image::
 
 import argparse
 import json
-import os
 import random
 import statistics
 import sys
