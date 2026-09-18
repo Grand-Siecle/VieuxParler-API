@@ -14,7 +14,7 @@ services:
       - BPE_MODEL=bpe_joint_4000.model
       - DEVICE=cpu
       - BEAM_SIZE=5
-      - MAX_TOKENS=200
+      - MAX_TOKENS=auto
       - WORKERS=1
       - LOG_LEVEL=info
     deploy:
@@ -46,7 +46,7 @@ services:
       - BPE_MODEL=bpe_joint_4000.model
       - DEVICE=cuda
       - BEAM_SIZE=5
-      - MAX_TOKENS=200
+      - MAX_TOKENS=auto
       - WORKERS=1
       - LOG_LEVEL=info
     deploy:
