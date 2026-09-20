@@ -59,6 +59,7 @@ WORKDIR /app
 # Copy application code
 COPY main.py ./
 COPY app/ ./app/
+COPY scripts/ ./scripts/
 
 # Download model
 RUN curl -fL -o freem_lstm_fairseq.zip \
