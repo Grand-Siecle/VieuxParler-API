@@ -238,7 +238,7 @@ Un *token* désigne ici une pièce SentencePiece (l'unité que voit le modèle),
 
 - `POST /translate/batch` renvoie toujours `translations` de même longueur et dans le même ordre que `texts`.
 - `batch_size` est conservé pour compatibilité mais ne dimensionne plus rien. `batch_size=1` sélectionne le **chemin de référence** : un appel modèle par ligne, sans découpage ni déduplication ni fusion (l'ancien comportement).
-- Sur CPU, à `BEAM_SIZE=5`, les sorties du chemin par lots sont identiques à celles du chemin de référence. `BEAM_SIZE` et `FP16` peuvent modifier des sorties : ils restent à leur valeur de référence par défaut.
+- Sur CPU comme sur GPU, à `BEAM_SIZE=5` en fp32, les sorties du chemin par lots sont identiques à celles du chemin de référence (voir [Résultats mesurés](#résultats-mesurés)). `BEAM_SIZE` et `FP16` peuvent modifier des sorties : ils restent à leur valeur de référence par défaut.
 
 ### Observabilité
 
@@ -253,6 +253,28 @@ docker compose --profile gpu run --rm api-gpu python scripts/parity_bench.py --n
 FP16=true  docker compose --profile gpu run --rm api-gpu python scripts/parity_bench.py --n 400
 BEAM_SIZE=1 docker compose --profile gpu run --rm api-gpu python scripts/parity_bench.py --n 400
 ```
+
+### Résultats mesurés
+
+Mesures du 20 septembre 2026 avec `parity_bench.py --n 400` : 326 lignes (13 865 tokens) du jeu de test, 80 par classe de longueur plus les 6 lignes de plus de 200 tokens que compte le jeu. GPU : NVIDIA GeForce RTX 4070 Ti (12 Go), torch 2.5.1+cu124 ; CPU : même machine (WSL2). `BEAM_SIZE=5`, fp32, `MAX_TOKENS=auto` sauf mention.
+
+| Device | Chemin de référence (ancien comportement) | Chemin par lots | Accélération |
+|--------|-------------------------------------------|-----------------|--------------|
+| GPU    | 24,5 s · 13,3 lignes/s · 565 tok/s        | 2,8 s · 115 lignes/s · 4 881 tok/s | ×8,6 |
+| CPU    | 88,1 s · 3,7 lignes/s · 157 tok/s         | 30,6 s · 10,7 lignes/s · 453 tok/s | ×2,9 |
+
+- **Parité.** Sur les 320 lignes de 200 tokens ou moins, sorties identiques au chemin de référence, sur GPU comme sur CPU (vérifié aussi contre le code d'origine de `main`, même débit à 0,1 s près). Les 6 lignes de plus de 200 tokens faisaient planter l'ancien code (`AssertionError: Sentences lengths should not exceed max_tokens=200`) ; coupées, leur chrF passe de 58,5 à 96,9.
+- **Le chemin de référence est limité par le surcoût par appel**, environ 75 ms par ligne sur GPU quelle que soit la précision : l'ancien code n'allait que 3,6 fois plus vite sur GPU que sur CPU. C'est le regroupement en lots qui exploite le GPU. Une requête `POST /translate` d'une seule phrase ne bénéficie donc pas de l'accélération.
+- **Mémoire.** Sur ce GPU le chemin par lots a coûté 75 KiB par token (pic de 487 MiB au-dessus du modèle avec un budget de 6 457 tokens, 1,1 GiB à 16 000), soit 7 fois moins que la valeur par défaut de `BYTES_PER_TOKEN` (1 MiB). Le budget automatique est donc prudent ; l'abaisser n'a pas apporté de gain mesurable sur un lot de cette taille.
+
+Variantes GPU, chemin par lots sur le même échantillon :
+
+| Réglage                                | Temps | Sorties                                              |
+|----------------------------------------|-------|------------------------------------------------------|
+| `BEAM_SIZE=5`, fp32 (défaut)           | 2,8 s | identiques à la référence                            |
+| `BEAM_SIZE=5`, `FP16=true`             | 2,6 s | chrF identique par classe, budget 13 039             |
+| `BEAM_SIZE=1`, fp32                    | 1,9 s | 1 ligne sur 320 diffère                              |
+| `BYTES_PER_TOKEN=153178` (valeur calibrée) | 2,8 s | identiques, budget 16 000 au lieu de 6 457, sans gain |
 
 ## Tests
 
